@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuoteFixr</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <style>
+        [v-cloak] { display: none; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .slide-enter-active, .slide-leave-active { transition: transform 0.5s; }
+        .slide-enter-from { transform: translateX(100%); }
+        .slide-leave-to { transform: translateX(-100%); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="app" v-cloak class="max-w-md mx-auto min-h-screen bg-white shadow-lg">
+        <header class="bg-blue-600 text-white p-4">
+            <h1 class="text-xl font-bold">QuoteFixr</h1>
+            <p class="text-sm">Get instant quotes for home repairs</p>
+        </header>
+
+        <main class="p-4">
+            <div v-if="currentView === 'categories'" class="space-y-4">
+                <button 
+                    v-for="category in categories" 
+                    :key="category.id"
+                    @click="selectCategory(category)"
+                    class="w-full p-4 text-left bg-white border rounded-lg shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-between">
+                    <span>{{ category.name }}</span>
+                    <i class="mdi mdi-chevron-right"></i>
+                </button>
+            </div>
+
+            <div v-if="currentView === 'issues'" class="space-y-4">
+                <button @click="currentView = 'categories'" class="mb-4 text-blue-600 flex items-center">
+                    <i class="mdi mdi-arrow-left mr-2"></i> Back
+                </button>
+                <div v-for="issue in selectedCategory.issues" :key="issue.id" 
+                    class="p-4 border rounded-lg">
+                    <h3 class="font-bold">{{ issue.name }}</h3>
+                    <p class="text-gray-600 text-sm">{{ issue.description }}</p>
+                    <button @click="startChat(issue)" 
+                        class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Get Quote
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="currentView === 'chat'" class="h-[80vh] flex flex-col">
+                <button @click="currentView = 'issues'" class="mb-4 text-blue-600 flex items-center">
+                    <i class="mdi mdi-arrow-left mr-2"></i> Back
+                </button>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-lg">
+                    <div v-for="(message, index) in chatMessages" :key="index"
+                        :class="['p-3 rounded-lg max-w-[80%]', 
+                            message.type === 'user' ? 'bg-blue-600 text-white ml-auto' : 'bg-white']">
+                        {{ message.text }}
+                    </div>
+                </div>
+                <div class="p-4 bg-white border-t">
+                    <form @submit.prevent="sendMessage" class="flex gap-2">
+                        <input v-model="userInput" type="text" 
+                            class="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                            placeholder="Type your message...">
+                        <button type="submit" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Send
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue
+
+        createApp({
+            setup() {
+                const currentView = ref('categories')
+                const selectedCategory = ref(null)
+                const userInput = ref('')
+                const chatMessages = ref([])
+
+                const categories = [
+                    {
+                        id: 1,
+                        name: 'Plumbing',
+                        issues: [
+                            { id: 1, name: 'Leaky Faucet', description: 'Water dripping from faucet' },
+                            { id: 2, name: 'Clogged Drain', description: 'Slow draining or completely blocked' },
+                            { id: 3, name: 'Running Toilet', description: 'Toilet constantly running or filling' }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        name: 'Electrical',
+                        issues: [
+                            { id: 4, name: 'Power Outlet Not Working', description: 'No power from outlet' },
+                            { id: 5, name: 'Light Fixture Issues', description: 'Flickering or non-functioning lights' },
+                            { id: 6, name: 'Circuit Breaker Problems', description: 'Frequently tripping breakers' }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        name: 'HVAC',
+                        issues: [
+                            { id: 7, name: 'AC Not Cooling', description: 'Air conditioner not producing cold air' },
+                            { id: 8, name: 'Heating Issues', description: 'Heater not producing warm air' },
+                            { id: 9, name: 'Thermostat Problems', description: 'Thermostat not responding or inaccurate' }
+                        ]
+                    }
+                ]
+
+                const selectCategory = (category) => {
+                    selectedCategory.value = category
+                    currentView.value = 'issues'
+                }
+
+                const startChat = (issue) => {
+                    currentView.value = 'chat'
+                    chatMessages.value = [
+                        { type: 'system', text: `Let's get you a quote for your ${issue.name}. Could you please describe the problem in more detail?` }
+                    ]
+                }
+
+                const sendMessage = () => {
+                    if (!userInput.value.trim()) return
+
+                    chatMessages.value.push({ type: 'user', text: userInput.value })
+                    
+                    setTimeout(() => {
+                        chatMessages.value.push({ 
+                            type: 'system', 
+                            text: 'Based on your description, we estimate this repair will cost between $150-$300. Would you like to schedule a professional inspection?' 
+                        })
+                    }, 1000)
+
+                    userInput.value = ''
+                }
+
+                return {
+                    currentView,
+                    categories,
+                    selectedCategory,
+                    userInput,
+                    chatMessages,
+                    selectCategory,
+                    startChat,
+                    sendMessage
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
